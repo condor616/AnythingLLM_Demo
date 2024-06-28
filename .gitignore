@@ -1,0 +1,8 @@
+
+# Ignore all files in the data directory
+/data/*
+
+# Except the readme.md file
+!/data/readme.md
+
+.DS_Store

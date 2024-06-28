@@ -1,0 +1,65 @@
+services:
+  chromadb:
+    image: chromadb/chroma
+    volumes:
+      # Be aware that indexed data are located in "/chroma/chroma/"
+      # Default configuration for persist_directory in chromadb/config.py
+      # Read more about deployments: https://docs.trychroma.com/deployment
+      - ./data/chromadb:/chroma/chroma
+    command: "--workers 1 --host 0.0.0.0 --port 8000 --proxy-headers --log-config chromadb/log_config.yml --timeout-keep-alive 30"
+    environment:
+      - IS_PERSISTENT=TRUE
+#      - CHROMA_SERVER_AUTHN_PROVIDER=${CHROMA_SERVER_AUTHN_PROVIDER}
+      #- CHROMA_SERVER_AUTHN_CREDENTIALS_FILE=${CHROMA_SERVER_AUTHN_CREDENTIALS_FILE}
+#      - CHROMA_SERVER_AUTHN_CREDENTIALS=${CHROMA_SERVER_AUTHN_CREDENTIALS}
+#      - CHROMA_AUTH_TOKEN_TRANSPORT_HEADER=${CHROMA_AUTH_TOKEN_TRANSPORT_HEADER}
+      - PERSIST_DIRECTORY=${PERSIST_DIRECTORY:-/chroma/chroma}
+      # - CHROMA_OTEL_EXPORTER_ENDPOINT=${CHROMA_OTEL_EXPORTER_ENDPOINT}
+      # - CHROMA_OTEL_EXPORTER_HEADERS=${CHROMA_OTEL_EXPORTER_HEADERS}
+      # - CHROMA_OTEL_SERVICE_NAME=${CHROMA_OTEL_SERVICE_NAME}
+      # - CHROMA_OTEL_GRANULARITY=${CHROMA_OTEL_GRANULARITY}
+      # - CHROMA_SERVER_NOFILE=${CHROMA_SERVER_NOFILE}
+    restart: unless-stopped # possible values are: "no", always", "on-failure", "unless-stopped"
+    ports:
+      - "8010:8000"
+    healthcheck:
+      # Adjust below to match your container port
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  chromadb-ui:
+    image: fengzhichao/chromadb-admin
+    ports:
+      - 3002:3000
+
+
+  anythingllm:
+    image: mintplexlabs/anythingllm
+    container_name: anythingllm
+    ports:
+    - "3001:3001"
+    cap_add:
+      - SYS_ADMIN
+    environment:
+    # Adjust for your environemnt
+      - STORAGE_DIR=/app/server/storage
+      - JWT_SECRET="supersecretpaSSwordYouWillNeverGuess"
+      - LLM_PROVIDER=ollama
+      - OLLAMA_BASE_PATH=http://host.docker.internal:11434
+      - OLLAMA_MODEL_PREF=llama3:latest
+      - OLLAMA_MODEL_TOKEN_LIMIT=4096
+      - EMBEDDING_ENGINE=ollama
+      - EMBEDDING_BASE_PATH=http://host.docker.internal:11434
+      - EMBEDDING_MODEL_PREF=nomic-embed-text:latest
+      - EMBEDDING_MODEL_MAX_CHUNK_LENGTH=8192
+      - VECTOR_DB=lancedb
+      - WHISPER_PROVIDER=local
+      - TTS_PROVIDER=native
+      - PASSWORDMINCHAR=8
+      # - AGENT_SERPER_DEV_KEY="SERPER DEV API KEY"
+      # - AGENT_SERPLY_API_KEY="Serply.io API KEY"
+    volumes:
+      - ./data/anything_llm/:/app/server/storage
+    restart: always
